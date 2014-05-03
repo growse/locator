@@ -15,7 +15,7 @@ public class MainApplication extends Application {
         try {
             Log.i("Locator", "Initializing fluffy library");
             LocationLibrary.showDebugOutput(true);
-            LocationLibrary.initialiseLibrary(getBaseContext(), 60000, 120000, true, "com.growse.locator.locator");
+            LocationLibrary.initialiseLibrary(getBaseContext(), "com.growse.locator.locator");
         } catch (UnsupportedOperationException ex) {
             Log.d("Locator", "UnsupportedOperationException thrown - the device doesn't have any location providers");
         }
