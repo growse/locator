@@ -3,7 +3,9 @@ package com.growse.locator.locator;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.littlefluffytoys.littlefluffylocationlibrary.LocationInfo;
@@ -40,15 +42,25 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
         }
         if (isConnected(context) && locationInfo != null) {
             Log.i("LocatorNetwork", "Valid location");
-
+            String endpoint;
+            if (BuildConfig.DEBUG) {
+                endpoint = "http://validate.jsontest.com/";
+            } else {
+                endpoint = "https://www.growse.com/locator/";
+            }
             HttpClient client = new DefaultHttpClient();
-            HttpPost post = new HttpPost("https://www.growse.com/locator/");
+            HttpPost post = new HttpPost(endpoint);
             List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 
+            WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
+            String ssid = wifiManager.getConnectionInfo().getSSID();
+            String mobileNetworkType = getNetworkClass(context);
             nameValuePairs.add(new BasicNameValuePair("lat", String.valueOf(locationInfo.lastLat)));
             nameValuePairs.add(new BasicNameValuePair("long", String.valueOf(locationInfo.lastLong)));
             nameValuePairs.add(new BasicNameValuePair("acc", String.valueOf(locationInfo.lastAccuracy)));
             nameValuePairs.add(new BasicNameValuePair("time", String.valueOf(locationInfo.lastLocationUpdateTimestamp)));
+            nameValuePairs.add(new BasicNameValuePair("wifissid", ssid));
+            nameValuePairs.add(new BasicNameValuePair("gsmtype", mobileNetworkType));
             try {
                 post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
             } catch (UnsupportedEncodingException e) {
@@ -77,5 +89,34 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
             return true;
         else
             return false;
+    }
+
+    public String getNetworkClass(Context context) {
+        TelephonyManager mTelephonyManager = (TelephonyManager)
+                context.getSystemService(Context.TELEPHONY_SERVICE);
+        int networkType = mTelephonyManager.getNetworkType();
+
+        switch (networkType) {
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+            case TelephonyManager.NETWORK_TYPE_CDMA:
+            case TelephonyManager.NETWORK_TYPE_1xRTT:
+            case TelephonyManager.NETWORK_TYPE_IDEN:
+                return "2G";
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+            case TelephonyManager.NETWORK_TYPE_EVDO_0:
+            case TelephonyManager.NETWORK_TYPE_EVDO_A:
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+            case TelephonyManager.NETWORK_TYPE_EVDO_B:
+            case TelephonyManager.NETWORK_TYPE_EHRPD:
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+                return "3G";
+            case TelephonyManager.NETWORK_TYPE_LTE:
+                return "4G";
+            default:
+                return "Unknown";
+        }
     }
 }
