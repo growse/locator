@@ -16,6 +16,8 @@ import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
@@ -23,6 +25,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Created by andrew on 02/05/14.
@@ -40,16 +44,9 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
         if (locations.length > 0) {
             locationInfo = locations[0];
         }
-        if (isConnected(context) && locationInfo != null) {
+        if (locationInfo != null) {
             Log.i("LocatorNetwork", "Valid location");
-            String endpoint;
-            if (BuildConfig.DEBUG) {
-                endpoint = "http://validate.jsontest.com/";
-            } else {
-                endpoint = "https://www.growse.com/locator/";
-            }
-            HttpClient client = new DefaultHttpClient();
-            HttpPost post = new HttpPost(endpoint);
+
             List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
 
             WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
@@ -61,25 +58,44 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
             nameValuePairs.add(new BasicNameValuePair("time", String.valueOf(locationInfo.lastLocationUpdateTimestamp)));
             nameValuePairs.add(new BasicNameValuePair("wifissid", ssid));
             nameValuePairs.add(new BasicNameValuePair("gsmtype", mobileNetworkType));
-            try {
-                post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-
-            HttpResponse response;
-            try {
-                response = client.execute(post);
-                if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                    Log.i("Network", "Network post success");
+            LocationQueue.INSTANCE.getQueue().add(nameValuePairs);
+        }
+        if (isConnected(context)) {
+            List<NameValuePair> nameValuePair;
+            while ((nameValuePair = LocationQueue.INSTANCE.getQueue().poll()) != null) {
+                String endpoint;
+                if (BuildConfig.DEBUG) {
+                    endpoint = "https://sni.velox.ch/";
+                } else {
+                    endpoint = "https://www.growse.com/locator/";
                 }
-                return response.getStatusLine().getStatusCode();
-            } catch (IOException e) {
-                e.printStackTrace();
 
+
+                HttpClient client = new DefaultHttpClient();
+                SchemeRegistry schemeRegistry = client.getConnectionManager().getSchemeRegistry();
+                schemeRegistry.register(new Scheme("https", new TlsSniSocketFactory(), 443));
+
+                HttpPost post = new HttpPost(endpoint);
+                try {
+                    post.setEntity(new UrlEncodedFormEntity(nameValuePair));
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+
+                HttpResponse response;
+                try {
+                    response = client.execute(post);
+                    if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+                        Log.i("Network", "Network post success");
+                    }
+                } catch (IOException e) {
+                    Log.i("Network", "Network post failure, requeuing");
+                    LocationQueue.INSTANCE.getQueue().addFirst(nameValuePair);
+                    e.printStackTrace();
+                }
             }
         }
-        return -1;
+        return 0;
     }
 
     private boolean isConnected(Context context) {
