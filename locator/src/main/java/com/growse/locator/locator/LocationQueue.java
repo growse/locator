@@ -10,7 +10,7 @@ import java.util.concurrent.LinkedBlockingDeque;
  */
 public enum LocationQueue {
     INSTANCE;
-    private LinkedBlockingDeque<List<NameValuePair>> queue = new LinkedBlockingDeque<List<NameValuePair>>();
+    private LinkedBlockingDeque<List<NameValuePair>> queue = new LinkedBlockingDeque<>();
 
     public LinkedBlockingDeque<List<NameValuePair>> getQueue() {
         return queue;

@@ -1,20 +1,18 @@
 package com.growse.locator.locator;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.littlefluffytoys.littlefluffylocationlibrary.LocationInfo;
 import com.littlefluffytoys.littlefluffylocationlibrary.LocationLibrary;
 import com.littlefluffytoys.littlefluffylocationlibrary.LocationLibraryConstants;
-
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -23,7 +21,7 @@ import org.joda.time.format.PeriodFormatterBuilder;
 import java.text.SimpleDateFormat;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends Activity {
 
     LocationInfo latestInfo;
     SimpleDateFormat sdfSource = new SimpleDateFormat(
@@ -73,7 +71,6 @@ public class MainActivity extends ActionBarActivity {
     @Override
     public void onPause() {
         super.onPause();
-
         unregisterReceiver(lftBroadcastReceiver);
     }
 
@@ -117,3 +114,4 @@ public class MainActivity extends ActionBarActivity {
         }
     };
 }
+

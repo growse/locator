@@ -7,9 +7,7 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-
 import com.littlefluffytoys.littlefluffylocationlibrary.LocationInfo;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -25,8 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Created by andrew on 02/05/14.
