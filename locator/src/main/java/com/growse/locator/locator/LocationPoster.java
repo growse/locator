@@ -1,13 +1,13 @@
 package com.growse.locator.locator;
 
 import android.content.Context;
+import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import com.littlefluffytoys.littlefluffylocationlibrary.LocationInfo;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -27,7 +27,7 @@ import java.util.List;
 /**
  * Created by andrew on 02/05/14.
  */
-public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
+public class LocationPoster extends AsyncTask<Location, Void, Integer> {
     private Context context;
 
     public LocationPoster(Context context) {
@@ -35,8 +35,8 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
     }
 
     @Override
-    protected Integer doInBackground(LocationInfo... locations) {
-        LocationInfo locationInfo = null;
+    protected Integer doInBackground(Location... locations) {
+        Location locationInfo = null;
         if (locations.length > 0) {
             locationInfo = locations[0];
         }
@@ -48,10 +48,10 @@ public class LocationPoster extends AsyncTask<LocationInfo, Void, Integer> {
             WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
             String ssid = wifiManager.getConnectionInfo().getSSID();
             String mobileNetworkType = getNetworkClass(context);
-            nameValuePairs.add(new BasicNameValuePair("lat", String.valueOf(locationInfo.lastLat)));
-            nameValuePairs.add(new BasicNameValuePair("long", String.valueOf(locationInfo.lastLong)));
-            nameValuePairs.add(new BasicNameValuePair("acc", String.valueOf(locationInfo.lastAccuracy)));
-            nameValuePairs.add(new BasicNameValuePair("time", String.valueOf(locationInfo.lastLocationUpdateTimestamp)));
+            nameValuePairs.add(new BasicNameValuePair("lat", String.valueOf(locationInfo.getLatitude())));
+            nameValuePairs.add(new BasicNameValuePair("long", String.valueOf(locationInfo.getLongitude())));
+            nameValuePairs.add(new BasicNameValuePair("acc", String.valueOf(locationInfo.getAccuracy())));
+            nameValuePairs.add(new BasicNameValuePair("time", String.valueOf(locationInfo.getTime())));
             nameValuePairs.add(new BasicNameValuePair("wifissid", ssid));
             nameValuePairs.add(new BasicNameValuePair("gsmtype", mobileNetworkType));
             LocationQueue.INSTANCE.getQueue().add(nameValuePairs);

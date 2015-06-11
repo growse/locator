@@ -1,19 +1,9 @@
 package com.growse.locator.locator;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.os.AsyncTask;
-import android.os.Build;
-import android.util.Log;
-
-import com.littlefluffytoys.littlefluffylocationlibrary.LocationInfo;
-import com.littlefluffytoys.littlefluffylocationlibrary.LocationLibraryConstants;
-
 /**
  * Created by andrew on 02/05/14.
  */
-public class LocationReceiver extends BroadcastReceiver {
+/*public class LocationReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.i("Locator", "Received new location from library");
@@ -27,3 +17,4 @@ public class LocationReceiver extends BroadcastReceiver {
 
     }
 }
+*/
