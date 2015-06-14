@@ -48,6 +48,12 @@
             <TextView android:id="@+id/last_posted"
                 android:gravity="right" android:padding="3dip" />
         </TableRow>
+        <TableRow>
+            <TextView android:layout_column="1" android:text="Pending locations"
+                      android:padding="3dip" />
+            <TextView android:id="@+id/pending_locations"
+                      android:gravity="right" android:padding="3dip" />
+        </TableRow>
     </TableLayout>
     <LinearLayout
         android:orientation="horizontal" android:layout_width="fill_parent" android:gravity="center"

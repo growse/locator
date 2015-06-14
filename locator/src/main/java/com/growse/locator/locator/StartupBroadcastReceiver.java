@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 
 /**
- * Created by andrew on 13/06/2015.
+ * We need to start the service on boot
  */
 public class StartupBroadcastReceiver extends BroadcastReceiver {
     @Override

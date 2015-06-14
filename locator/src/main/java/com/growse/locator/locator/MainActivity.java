@@ -1,6 +1,8 @@
 package com.growse.locator.locator;
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -11,12 +13,6 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -41,6 +37,11 @@ public class MainActivity extends Activity {
                 refreshDisplay();
             }
         });
+        Intent transmitIntent = new Intent(this, TransmitReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, transmitIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, 10000, 10000, pendingIntent);
+        Log.i("Locator","Alarm set");
 
     }
 
@@ -81,7 +82,6 @@ public class MainActivity extends Activity {
         }
     }
 
-
     private void refreshDisplay() {
         final View locationTable = findViewById(R.id.location_table);
         final TextView locationTextView = (TextView) findViewById(R.id.location_title);
@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
                 ((TextView) findViewById(R.id.location_accuracy)).setText(Float.toString(location.getAccuracy()) + "m");
                 ((TextView) findViewById(R.id.location_speed)).setText(Float.toString(location.getSpeed()) + "m");
                 ((TextView) findViewById(R.id.last_posted)).setText(formatter.print(period));
+                ((TextView) findViewById(R.id.pending_locations)).setText("HI");
             } else {
                 Log.i("Locator","location not yet set");
             }
