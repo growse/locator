@@ -37,6 +37,12 @@
                 android:gravity="right" android:padding="3dip" />
         </TableRow>
         <TableRow>
+            <TextView android:layout_column="1" android:text="Speed"
+                      android:padding="3dip" />
+            <TextView android:id="@+id/location_speed"
+                      android:gravity="right" android:padding="3dip" />
+        </TableRow>
+        <TableRow>
             <TextView android:layout_column="1" android:text="Last Posted"
                 android:padding="3dip" />
             <TextView android:id="@+id/last_posted"
@@ -50,11 +56,5 @@
             android:layout_width="0dp" android:layout_weight="1" android:layout_margin="5dp"
             android:layout_height="wrap_content" android:text="Refresh" />
     </LinearLayout>
-    <LinearLayout
-        android:orientation="horizontal" android:layout_width="fill_parent" android:gravity="center"
-        android:layout_height="wrap_content">
-        <Button android:id="@+id/forcelocation"
-            android:layout_width="0dp" android:layout_weight="1" android:layout_margin="5dp"
-            android:layout_height="wrap_content" android:text="Force location" />
-    </LinearLayout>
+
 </LinearLayout>

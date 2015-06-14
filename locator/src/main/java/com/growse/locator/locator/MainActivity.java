@@ -1,8 +1,13 @@
 package com.growse.locator.locator;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -18,11 +23,109 @@ import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
 
 
-public class MainActivity extends Activity implements GoogleApiClient.OnConnectionFailedListener, LocationListener, GoogleApiClient.ConnectionCallbacks {
+public class MainActivity extends Activity {
+    private LocatorSystemService service;
+    private LocatorSystemServiceConnection serviceConnection;
 
-    private GoogleApiClient mGoogleApiClient;
-    private LocationRequest mLocationRequest;
-    private Location mLocation;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        System.setProperty("org.joda.time.DateTimeZone.Provider",
+                "com.growse.locator.locator.JdkBasedTimeZoneProvider");
+        Log.i("Locator", "Locator Activity starting");
+        //startService(new Intent(MainActivity.this, LocatorSystemService.class));
+
+        setContentView(R.layout.activity_main);
+        findViewById(R.id.refresh).setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                refreshDisplay();
+            }
+        });
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.i("Locator", "onResume");
+        connectToService();
+        refreshDisplay();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.i("Locator", "onPause");
+        if (serviceConnection != null) {
+            unbindService(serviceConnection);
+            serviceConnection = null;
+        }
+    }
+
+    private void connectToService() {
+        Log.i("Locator", "Connect To Service");
+        // Calling startService() first prevents it from being killed on unbind()
+        startService(new Intent(MainActivity.this, LocatorSystemService.class));
+
+        // Now connect to it
+        serviceConnection = new LocatorSystemServiceConnection();
+
+        boolean result = bindService(
+                new Intent(this, LocatorSystemService.class),
+                serviceConnection,
+                BIND_AUTO_CREATE
+        );
+
+        if (!result) {
+            throw new RuntimeException("Unable to bind with service.");
+        }
+    }
+
+
+    private void refreshDisplay() {
+        final View locationTable = findViewById(R.id.location_table);
+        final TextView locationTextView = (TextView) findViewById(R.id.location_title);
+        if (service != null) {
+            Location location = service.getLocation();
+
+            if (location != null) {
+                Log.i("Locator", String.valueOf(service.getLocation()));
+                locationTable.setVisibility(View.VISIBLE);
+                DateTime then = new DateTime(location.getTime());
+                DateTime now = new DateTime();
+                Period period = new Period(then, now);
+                ((TextView) findViewById(R.id.location_timestamp)).setText(new DateTime(location.getTime()).toString());
+                ((TextView) findViewById(R.id.location_latitude)).setText(Double.toString(location.getLatitude()));
+                ((TextView) findViewById(R.id.location_longitude)).setText(Double.toString(location.getLongitude()));
+                ((TextView) findViewById(R.id.location_accuracy)).setText(Float.toString(location.getAccuracy()) + "m");
+                ((TextView) findViewById(R.id.location_speed)).setText(Float.toString(location.getSpeed()) + "m");
+                ((TextView) findViewById(R.id.last_posted)).setText(formatter.print(period));
+            } else {
+                Log.i("Locator","location not yet set");
+            }
+        } else {
+            Log.w("Locator","No service!");
+        }
+
+        locationTextView.setText("Latest location has been broadcast");
+
+    }
+
+    protected class LocatorSystemServiceConnection implements ServiceConnection {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder binder) {
+            Log.i("Activity", String.format("onServiceConnected %s", className));
+            service = ((LocatorSystemService.LocalBinder) binder).getService();
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName className) {
+            Log.e("Activity", String.format("onServiceDisconnected %s", className));
+            service = null;
+        }
+    }
+
 
     PeriodFormatter formatter = new PeriodFormatterBuilder()
             .appendYears().appendSuffix(" year, ", " years, ")
@@ -34,115 +137,5 @@ public class MainActivity extends Activity implements GoogleApiClient.OnConnecti
             .appendSeconds().appendSuffix(" second, ", " seconds")
             .printZeroNever()
             .toFormatter();
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        System.setProperty("org.joda.time.DateTimeZone.Provider",
-                "com.growse.locator.locator.JdkBasedTimeZoneProvider");
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-        Log.i("Locator", "Locator Activity starting");
-        setContentView(R.layout.activity_main);
-        findViewById(R.id.refresh).setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                refreshDisplay();
-            }
-        });
-
-        findViewById(R.id.forcelocation).setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                //LocationLibrary.forceLocationUpdate(MainActivity.this);
-                Toast.makeText(getApplicationContext(), "Forcing a location update", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mGoogleApiClient.connect();
-    }
-
-    @Override
-    protected void onStop() {
-        // Disconnecting the client invalidates it.
-        mGoogleApiClient.disconnect();
-        super.onStop();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        refreshDisplay();
-        //final IntentFilter lftIntentFilter = new IntentFilter(LocationLibraryConstants.getLocationChangedPeriodicBroadcastAction());
-        //registerReceiver(lftBroadcastReceiver, lftIntentFilter);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        //unregisterReceiver(lftBroadcastReceiver);
-    }
-
-
-    private void refreshDisplay() {
-        final View locationTable = findViewById(R.id.location_table);
-        final TextView locationTextView = (TextView) findViewById(R.id.location_title);
-        if (mLocation != null) {
-            locationTable.setVisibility(View.VISIBLE);
-            DateTime then = new DateTime(mLocation.getTime());
-            DateTime now = new DateTime();
-            Period period = new Period(then, now);
-            ((TextView) findViewById(R.id.location_timestamp)).setText(Long.toString(mLocation.getTime()));
-            ((TextView) findViewById(R.id.location_latitude)).setText(Double.toString(mLocation.getLatitude()));
-            ((TextView) findViewById(R.id.location_longitude)).setText(Double.toString(mLocation.getLongitude()));
-            ((TextView) findViewById(R.id.location_accuracy)).setText(Float.toString(mLocation.getAccuracy()) + "m");
-            ((TextView) findViewById(R.id.last_posted)).setText(formatter.print(period));
-        }
-
-        locationTextView.setText("Latest location has been broadcast");
-
-    }
-
-   /* private final BroadcastReceiver lftBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // extract the location info in the broadcast
-            final LocationInfo locationInfo = (LocationInfo) intent.getSerializableExtra(LocationLibraryConstants.LOCATION_BROADCAST_EXTRA_LOCATIONINFO);
-            // refresh the display with it
-            refreshDisplay(locationInfo);
-        }
-    };*/
-
-    @Override
-    public void onConnected(Bundle bundle) {
-        mLocationRequest = LocationRequest.create();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(60000); // Update location every second
-
-        LocationServices.FusedLocationApi.requestLocationUpdates(
-                mGoogleApiClient, mLocationRequest, this);
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.i("Locator", "GoogleApiClient connection has been suspend");
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        mLocation = location;
-        refreshDisplay();
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        Log.i("Locator", "GoogleApiClient connection has failed");
-    }
 }
 
