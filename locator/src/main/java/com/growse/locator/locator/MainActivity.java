@@ -3,13 +3,11 @@ package com.growse.locator.locator;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.*;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -37,18 +35,25 @@ public class MainActivity extends Activity {
                 refreshDisplay();
             }
         });
-        Intent transmitIntent = new Intent(this, TransmitReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, transmitIntent, PendingIntent.FLAG_CANCEL_CURRENT);
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, 10000, 10000, pendingIntent);
-        Log.i("Locator","Alarm set");
 
+        Intent serviceStartIntent = new Intent(this, ServiceStartReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, serviceStartIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        alarmManager.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, System.currentTimeMillis(), 10000, pendingIntent);
+        Log.i(this.getLocalClassName(), "Alarm set");
+        BroadcastReceiver locationChangedBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                refreshDisplay();
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver(locationChangedBroadcastReceiver, new IntentFilter("locationReceived"));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.i("Locator", "onResume");
+        Log.i(this.getLocalClassName(), "onResume");
         connectToService();
         refreshDisplay();
     }
@@ -56,7 +61,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        Log.i("Locator", "onPause");
+        Log.i(this.getLocalClassName(), "onPause");
         if (serviceConnection != null) {
             unbindService(serviceConnection);
             serviceConnection = null;
@@ -64,7 +69,7 @@ public class MainActivity extends Activity {
     }
 
     private void connectToService() {
-        Log.i("Locator", "Connect To Service");
+        Log.i(this.getLocalClassName(), "Connect To Service");
         // Calling startService() first prevents it from being killed on unbind()
         startService(new Intent(MainActivity.this, LocatorSystemService.class));
 
@@ -89,7 +94,7 @@ public class MainActivity extends Activity {
             Location location = service.getLocation();
 
             if (location != null) {
-                Log.i("Locator", String.valueOf(service.getLocation()));
+                Log.i(this.getLocalClassName(), String.valueOf(service.getLocation()));
                 locationTable.setVisibility(View.VISIBLE);
                 DateTime then = new DateTime(location.getTime());
                 DateTime now = new DateTime();
@@ -100,29 +105,28 @@ public class MainActivity extends Activity {
                 ((TextView) findViewById(R.id.location_accuracy)).setText(Float.toString(location.getAccuracy()) + "m");
                 ((TextView) findViewById(R.id.location_speed)).setText(Float.toString(location.getSpeed()) + "m");
                 ((TextView) findViewById(R.id.last_posted)).setText(formatter.print(period));
-                ((TextView) findViewById(R.id.pending_locations)).setText("HI");
+                ((TextView) findViewById(R.id.pending_locations)).setText(String.valueOf(service.getLocationQueueSize()));
+                locationTextView.setText("Location found.");
+
             } else {
-                Log.i("Locator","location not yet set");
+                locationTextView.setText("No location yet.");
             }
         } else {
-            Log.w("Locator","No service!");
+            locationTextView.setText("Couldn't connect to the location service.");
         }
-
-        locationTextView.setText("Latest location has been broadcast");
-
     }
 
     protected class LocatorSystemServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName className, IBinder binder) {
-            Log.i("Activity", String.format("onServiceConnected %s", className));
+            Log.i(this.getClass().getName(), String.format("onServiceConnected %s", className));
             service = ((LocatorSystemService.LocalBinder) binder).getService();
-
+            refreshDisplay();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName className) {
-            Log.e("Activity", String.format("onServiceDisconnected %s", className));
+            Log.e(this.getClass().getName(), String.format("onServiceDisconnected %s", className));
             service = null;
         }
     }

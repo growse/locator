@@ -17,22 +17,16 @@ import java.net.URL;
  * Created by andrew on 02/05/14.
  */
 public class LocationPoster extends AsyncTask<String, Void, Integer> {
-    private Context context;
-    private LocatorSystemService service;
-    private MainActivity.LocatorSystemServiceConnection serviceConnection;
-
-    public LocationPoster(Context context) {
-        this.context = context;
-    }
 
     @Override
     protected Integer doInBackground(String... params) {
-        Log.i("Locator", "Attempting to post to network");
+        Log.i(this.getClass().getName(), String.format("Attempting to post to network: %s", params[0]));
 
         URL endpoint;
         if (BuildConfig.DEBUG) {
             try {
-                endpoint = new URL("https://sni.velox.ch/");
+                //endpoint = new URL("https://sni.velox.ch/");
+                endpoint = new URL("https://www.growse.com/locator/");
             } catch (MalformedURLException e) {
                 e.printStackTrace();
                 return 1;
@@ -60,11 +54,11 @@ public class LocationPoster extends AsyncTask<String, Void, Integer> {
             int responseCode = conn.getResponseCode();
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                Log.i("Network", "Network post success");
+                Log.i(this.getClass().getName(), "Network post success");
             }
             return 0;
         } catch (IOException e) {
-            Log.i("Network", "Network post failure, requeuing");
+            Log.i(this.getClass().getName(), "Network post failure, requeuing");
 
             e.printStackTrace();
             return 1;
@@ -72,16 +66,6 @@ public class LocationPoster extends AsyncTask<String, Void, Integer> {
             if (conn != null) {
                 conn.disconnect();
             }
-
-
         }
-
     }
-
-    private boolean isConnected(Context context) {
-        ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        return networkInfo != null && networkInfo.isConnected();
-    }
-
 }

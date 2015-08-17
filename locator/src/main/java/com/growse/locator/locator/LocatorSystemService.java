@@ -1,7 +1,6 @@
 package com.growse.locator.locator;
 
 import android.app.Service;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
@@ -13,6 +12,7 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.Settings;
+import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import com.google.android.gms.common.ConnectionResult;
@@ -32,12 +32,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class LocatorSystemService extends Service implements GoogleApiClient.OnConnectionFailedListener, LocationListener, GoogleApiClient.ConnectionCallbacks {
 
-
-    public LocationQueue getLocationQueue() {
-        return locationQueue;
-    }
-
-    private LocationQueue locationQueue = new LocationQueue();
+    private LocationQueue locationQueue = new LocationQueue(this);
     private Location mLocation;
     private GoogleApiClient mGoogleApiClient;
     private String androidId;
@@ -69,35 +64,32 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
      */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i("Service", "onStartCommand");
+        Log.d(this.getClass().getName(), "onStartCommand");
         DoNetworkPost();
         return android.app.Service.START_STICKY;
     }
 
     private void DoNetworkPost() {
         if (isConnected(this)) {
-            Log.i("Locator", "Network is good, going to post");
-            ContentValues contentValues;
-            ArrayList<ContentValues> valueList = new ArrayList<>();
+            Log.d(this.getClass().getName(), "Network is good, going to POST to network");
+            String contentValues;
+            ArrayList<String> valueList = new ArrayList<>();
             while ((contentValues = locationQueue.getQueue().poll()) != null) {
                 valueList.add(contentValues);
             }
-            Log.i("Locator", String.format("%d values to post", valueList.size()));
+            Log.d(this.getClass().getName(), String.format("%d values to post", valueList.size()));
             if (valueList.size() > 0) {
                 JSONArray array = new JSONArray();
                 try {
-                    for (ContentValues values : valueList) {
-                        JSONObject obj = new JSONObject();
-                        for (String key : values.keySet()) {
-                            obj.put(key, values.get(key));
-                        }
+                    for (String locationObjJSON : valueList) {
+                        JSONObject obj = new JSONObject(locationObjJSON);
                         array.put(obj);
                     }
                 } catch (JSONException e) {
-                    Log.e("Locator", "Error encoding JSON", e);
+                    Log.e(this.getClass().getName(), "Error encoding JSON", e);
 
                 }
-                AsyncTask<String,Void,Integer> task = new LocationPoster(this).execute(array.toString());
+                AsyncTask<String, Void, Integer> task = new LocationPoster().execute(array.toString());
 
                 int result = 0;
                 try {
@@ -105,19 +97,25 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
 
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
-                    Log.i("Locator", "Exception, Requeueing");
-                    for (ContentValues values : valueList) {
-                        locationQueue.getQueue().addFirst(values);
+                    Log.i(this.getClass().getName(), "Exception, Requeueing");
+                    for (String value : valueList) {
+                        locationQueue.getQueue().add(value);
                     }
                 }
                 if (result != 0) {
-                    Log.i("Locator", "Requeueing");
-                    for (ContentValues values : valueList) {
-                        locationQueue.getQueue().addFirst(values);
+                    Log.i(this.getClass().getName(), "Network Status bad. Requeueing");
+                    for (String value : valueList) {
+                        locationQueue.getQueue().add(value);
                     }
                 }
             }
+        } else {
+            Log.i(this.getClass().getName(), "No network, skipping posting");
         }
+    }
+
+    public int getLocationQueueSize() {
+        return locationQueue.getQueue().size();
     }
 
     private boolean isConnected(Context context) {
@@ -137,7 +135,7 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
-        Log.i("Locator", "Locator Service starting");
+        Log.i(this.getClass().getName(), "Locator Service starting");
         androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         mGoogleApiClient.connect();
 
@@ -149,7 +147,7 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
      */
     @Override
     public void onDestroy() {
-        Log.i("Locator", "Locator Service destroy");
+        Log.i(this.getClass().getName(), "Locator Service destroy");
         mGoogleApiClient.disconnect();
     }
 
@@ -172,29 +170,34 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
     @Override
     public void onLocationChanged(Location location) {
         mLocation = location;
-        Log.i("Locator", String.format("New location! %f %f %f", location.getLatitude(), location.getLongitude(), location.getAccuracy()));
-
-        Log.i("LocatorNetwork", "Valid location");
+        Log.i(this.getClass().getName(), String.format("New location! %f %f %f", location.getLatitude(), location.getLongitude(), location.getAccuracy()));
 
         WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         String ssid = wifiManager.getConnectionInfo().getSSID();
         String mobileNetworkType = getNetworkClass(this);
-        ContentValues values = new ContentValues();
+        JSONObject values = new JSONObject();
+        try {
+            values.put("lat", location.getLatitude());
+            values.put("long", location.getLongitude());
+            values.put("acc", location.getAccuracy());
+            values.put("time", location.getTime());
+            values.put("wifissid", ssid);
+            values.put("gsmtype", mobileNetworkType);
+            values.put("deviceid", androidId);
+            locationQueue.getQueue().add(values.toString());
+            Log.d(this.getClass().getName(), String.format("Queue length: %d", locationQueue.getQueue().size()));
+        } catch (JSONException e) {
+            Log.e(this.getClass().getName(), "Error encoding JSON", e);
+        }
+        LocalBroadcastManager broadcastManager = LocalBroadcastManager.getInstance(this);
+        broadcastManager.sendBroadcast(new Intent("locationReceived"));
+        DoNetworkPost();
 
-        values.put("lat", String.valueOf(location.getLatitude()));
-        values.put("long", String.valueOf(location.getLongitude()));
-        values.put("acc", String.valueOf(location.getAccuracy()));
-        values.put("time", String.valueOf(location.getTime()));
-        values.put("wifissid", ssid);
-        values.put("gsmtype", mobileNetworkType);
-        values.put("deviceid", androidId);
-        locationQueue.getQueue().add(values);
-        Log.i("Locator", String.format("Queue length: %d", locationQueue.getQueue().size()));
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-        Log.i("Locator", "GoogleApiClient connection has failed");
+        Log.e(this.getClass().getName(), "GoogleApiClient connection has failed");
     }
 
     public String getNetworkClass(Context context) {

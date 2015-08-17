@@ -8,7 +8,7 @@ import android.util.Log;
 /**
  * Created by andrew on 14/06/2015.
  */
-public class TransmitReceiver extends BroadcastReceiver {
+public class ServiceStartReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.i("Locator", "Transmit Receiver fired");
