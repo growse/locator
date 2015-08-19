@@ -43,6 +43,7 @@ public class LocationPoster extends AsyncTask<String, Void, Integer> {
         try {
             conn = (HttpsURLConnection) endpoint.openConnection();
             conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoInput(true);
             conn.setDoOutput(true);
 

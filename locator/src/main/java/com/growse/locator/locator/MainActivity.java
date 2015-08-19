@@ -24,9 +24,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        System.setProperty("org.joda.time.DateTimeZone.Provider",
-                "com.growse.locator.locator.JdkBasedTimeZoneProvider");
+        //System.setProperty("org.joda.time.DateTimeZone.Provider","com.growse.locator.locator.JdkBasedTimeZoneProvider");
         Log.i("Locator", "Locator Activity starting");
+        //JdkBasedTimeZoneProvider timeZoneProvider = new JdkBasedTimeZoneProvider(); //Need this so that the build doesn't chuck it away.
         //startService(new Intent(MainActivity.this, LocatorSystemService.class));
 
         setContentView(R.layout.activity_main);
