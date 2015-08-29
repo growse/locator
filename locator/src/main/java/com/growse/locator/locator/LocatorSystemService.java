@@ -154,7 +154,7 @@ public class LocatorSystemService extends Service implements GoogleApiClient.OnC
     @Override
     public void onConnected(Bundle bundle) {
         LocationRequest mLocationRequest = LocationRequest.create();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         mLocationRequest.setInterval(60000); // Update location every second
 
         LocationServices.FusedLocationApi.requestLocationUpdates(

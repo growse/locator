@@ -16,3 +16,4 @@
 #   public *;
 #}
 -dontwarn org.joda.convert.**
+-dontwarn com.google.**
