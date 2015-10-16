@@ -1,16 +1,24 @@
 package com.growse.locator.locator;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
+import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.*;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -22,12 +30,21 @@ public class MainActivity extends Activity {
     private LocatorSystemServiceConnection serviceConnection;
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 1:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    connectToService();
+                }
+                break;
+        }
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //System.setProperty("org.joda.time.DateTimeZone.Provider","com.growse.locator.locator.JdkBasedTimeZoneProvider");
+
         Log.i("Locator", "Locator Activity starting");
-        //JdkBasedTimeZoneProvider timeZoneProvider = new JdkBasedTimeZoneProvider(); //Need this so that the build doesn't chuck it away.
-        //startService(new Intent(MainActivity.this, LocatorSystemService.class));
 
         setContentView(R.layout.activity_main);
         findViewById(R.id.refresh).setOnClickListener(new View.OnClickListener() {
@@ -36,6 +53,35 @@ public class MainActivity extends Activity {
             }
         });
 
+        Integer resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            Dialog dialog = GooglePlayServicesUtil.getErrorDialog(resultCode, this, 0);
+            if (dialog != null) {
+                //This dialog will help the user update to the latest GooglePlayServices
+                dialog.show();
+            }
+        } else {
+            initializeServiceAlarms();
+        }
+    }
+
+    private void checkPermissionsBeforeConnectingToService() {
+        int hasLocationPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (hasLocationPermission != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                Toast.makeText(this, "Location permission required.", Toast.LENGTH_LONG).show();
+                //Previously denied
+            } else {
+                //Ask
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            }
+
+        } else {
+            connectToService();
+        }
+    }
+
+    private void initializeServiceAlarms() {
         Intent serviceStartIntent = new Intent(this, ServiceStartReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, serviceStartIntent, PendingIntent.FLAG_CANCEL_CURRENT);
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
@@ -54,7 +100,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.i(this.getLocalClassName(), "onResume");
-        connectToService();
+        checkPermissionsBeforeConnectingToService();
         refreshDisplay();
     }
 
@@ -130,7 +176,6 @@ public class MainActivity extends Activity {
             service = null;
         }
     }
-
 
     PeriodFormatter formatter = new PeriodFormatterBuilder()
             .appendYears().appendSuffix(" year, ", " years, ")
